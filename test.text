@@ -1,0 +1,50 @@
+
+
+@bot.command()
+async def bump(ctx):
+    global bump_channel_id
+    bump_channel_id = ctx.channel.id
+
+    if bump_loop.is_running():
+        bump_loop.restart()
+    else:
+        bump_loop.start()
+
+    embed = discord.Embed(title="Bump reminder!", description=f"✅ Bump reminders started in {ctx.channel.mention} after 2 hours.", color=discord.Color.pink())
+    await ctx.send(embed=embed)
+
+async def do_bump_loop():
+    print("Bump loop started.")
+
+@tasks.loop(seconds=30)
+async def bump_loop():
+    await do_bump_loop()
+    if bump_channel_id is None:
+        return
+
+    channel = bot.get_channel(bump_channel_id)
+    if channel:
+        embed = discord.Embed(title="🔔 Bump reminder!", description="Use '/bump' to bump the server.", color=discord.Color.purple())
+        await channel.send(embed=embed)
+
+@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+
+    if "/bump" in message.content.lower():
+
+        if bump_loop.is_running():
+            bump_loop.restart()
+
+        await do_bump_loop()
+        embed = discord.Embed(title= "✅ Server Bumped!", description= "Thanks for bumping the server!\n \n We will remind you in 2 hours.", color=discord.Color.green())
+        await message.channel.send(embed=embed)
+
+
+    await bot.process_commands(message)
+
+
+@bump_loop.before_loop
+async def before_bump_loop():
+    await bot.wait_until_ready()
