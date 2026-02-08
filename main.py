@@ -32,12 +32,16 @@ async def on_ready():
 # -------------------- Roles add / remove --------------------
 @bot.command()
 async def assign(ctx):
-    role = discord.utils.get(ctx.guild.roles, name=pingRole)
-    if role:
-        await ctx.author.add_roles(role)
-        await ctx.send(f"{ctx.author.name} Assign the role {pingRole}.")
-    else:
-        await ctx.send(f"Role dose not exist.")
+    try:
+        role = discord.utils.get(ctx.guild.roles, name=pingRole)
+        if role:
+            await ctx.author.add_roles(role)
+            await ctx.send(f"{ctx.author.name} Assign the role {pingRole}.")
+        else:
+            await ctx.send("Role does not exist.")
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+        print(f"assign command error: {e}")
 
 @bot.command()
 async def remove(ctx):
@@ -86,26 +90,39 @@ async def bump(ctx):
     await ctx.send(embed=embed)
 
     if not timer_running:
-        await start_timer()  # start the 2 hours timer
+        try:
+            await start_timer()
+        except Exception as e:
+            print(f"Timer error: {e}")
 
 # -------------------- Detect "Bump done" --------------------
 @bot.event
 async def on_message(message):
-    global bump_channel_id, timer_running
-    if message.author == bot.user:
-        return
+    try:
+        global bump_channel_id, timer_running
+        if message.author == bot.user:
+            return
 
-    if message.author.id == 302050872383242240:  #DISBOARD's bot's user ID 302050872383242240
-        channel = bot.get_channel(bump_channel_id)
-        if channel:
-            embed = discord.Embed(title="Bumb is done!", description=f"✅ Bump marked done! Starting the 2-hours timer again...", color=discord.Color.green())
-            embed.set_image(url="https://cdn.discordapp.com/attachments/969959668732526592/1452726925230346401/SPOILER_809c52bce47f98c54418cbc0d7a347e5.gif?ex=69897c21&is=69882aa1&hm=8cb04190ef35d983e668947e9264ff4d10e63388e9c897a56ea75f4021e828e4&")
-            await channel.send(embed=embed)
+        if message.author.id == 302050872383242240:  # DISBOARD's bot
+            channel = bot.get_channel(bump_channel_id)
+            if channel:
+                embed = discord.Embed(
+                    title="Bump is done!",
+                    description="✅ Bump marked done! Starting the 2-hours timer again...",
+                    color=discord.Color.green()
+                )
+                embed.set_image(
+                    url="https://cdn.discordapp.com/attachments/969959668732526592/1452726925230346401/SPOILER_809c52bce47f98c54418cbc0d7a347e5.gif?ex=69897c21&is=69882aa1&hm=8cb04190ef35d983e668947e9264ff4d10e63388e9c897a56ea75f4021e828e4&"
+                )
+                await channel.send(embed=embed)
 
-        if not timer_running:
-            await start_timer()  # restart the 2 hours timer automatically
+            if not timer_running:
+                await start_timer()  # restart the 2 hours timer automatically
 
-    await bot.process_commands(message)
+        await bot.process_commands(message)  # don't forget this peko
+
+    except Exception as e:
+        print(f"on_message error: {e}")
 
 #------------- true or false -----------------
 @bot.command()
@@ -157,5 +174,11 @@ async def tof(ctx, *, tof_question=None):
         await ctx.send(embed=embed) #sends the embed
 
 # -------------------- Run the bot --------------------
-webserver.keep_alive()
-bot.run(token, log_handler=handler, log_level=logging.DEBUG)
+import webserver
+webserver.keep_alive()  # start the keep-alive server
+
+async def main():
+    await asyncio.sleep(20)  # small delay to avoid login spam
+    await bot.start(token)    # login to Discord
+
+asyncio.run(main())  # start the bot
